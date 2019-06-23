@@ -1,0 +1,84 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: shawarma
+rules:
+- apiGroups: [""]
+  resources: ["endpoints"]
+  verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: shawarma-example
+subjects:
+- kind: ServiceAccount
+  name: shawarma-example
+roleRef:
+  kind: Role
+  name: shawarma
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: shawarma-example
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shawarma-example
+  labels:
+    svc: shawarma-example
+spec:
+  selector:
+    app: shawarma-example
+    active: 'true'
+  ports:
+  - name: http
+    port: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shawarma-example
+  labels:
+    app: shawarma-example
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: shawarma-example
+  template:
+    metadata:
+      labels:
+        app: shawarma-example
+        active: 'true'
+    spec:
+      serviceAccountName: shawarma-example
+      containers:
+        - name: primary
+          # Simple HTTP server for example purposes, logs requests and responds with 200
+          image: mendhak/http-https-echo
+          ports:
+          - name: http
+            containerPort: 80
+        - name: shawarma
+          image: centeredge/shawarma:1
+          env:
+            - name: LOG_LEVEL
+              value: DEBUG
+            - name: SHAWARMA_SERVICE
+              # References service to monitor
+              value: shawarma-example
+            - name: SHAWARMA_URL
+              # Will POST state to this URL as pod is attached/detached from the service
+              value: http://localhost/applicationstate
+            - name: MY_POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: MY_POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace

@@ -1,5 +1,7 @@
 # Shawarma
 
+[![Build Status](https://travis-ci.org/CenterEdge/shawarma.svg?branch=master)](https://travis-ci.org/CenterEdge/shawarma)
+
 A Kubernetes sidecar to assist with enabling/disabling background processing during blue/green
 deployments.
 

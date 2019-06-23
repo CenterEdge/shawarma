@@ -7,6 +7,9 @@ import (
 	"github.com/urfave/cli"
 )
 
+// Set on build
+var version string
+
 func main() {
 	log.SetOutput(os.Stdout)
 	log.SetFormatter(&log.JSONFormatter{})
@@ -15,6 +18,7 @@ func main() {
 	app.Name = "Blue/Green Monitor"
 	app.Usage = "Sidecar for monitoring a Kubernetes service and notifying the main application when it is live"
 	app.Copyright = "(c) 2019 CenterEdge Software"
+  app.Version = version
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{

@@ -16,8 +16,9 @@ COPY go.* ./
 RUN go mod download
 
 # Build the application, and compress with upx
+ARG VERSION
 COPY ./ ./
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" && \
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w -X main.version=${VERSION:-0.0.0}" && \
     /opt/upx/upx shawarma
 
 # Copy compiled output to a fresh image

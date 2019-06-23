@@ -7,3 +7,6 @@ trim_trailing_whitespace = true
 
 [*.go]
 indent_size = 2
+
+[*.sh]
+end_of_line = lf

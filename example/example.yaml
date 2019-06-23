@@ -64,7 +64,8 @@ spec:
           - name: http
             containerPort: 80
         - name: shawarma
-          image: centeredge/shawarma:1
+          # Using latest is not recommended for production, specify a version number
+          image: centeredge/shawarma:latest
           env:
             - name: LOG_LEVEL
               value: DEBUG

@@ -10,27 +10,27 @@ import (
 )
 
 const (
-  activeState = "active"
-  inactiveState = "inactive"
+  activeStatus = "active"
+  inactiveStatus = "inactive"
 
   retryAttempts = 3
 )
 
 type stateChangeDto struct {
-  State string `json:"state"`
+  Status string `json:"status"`
 }
 
 var retryInterval, _ = time.ParseDuration("1s")
 
-func notifyStateChange(info *monitorInfo, newState bool) error {
+func notifyStateChange(info *monitorInfo, newStatus bool) error {
   var err error
 
   state := stateChangeDto{}
 
-  if newState {
-    state.State = activeState
+  if newStatus {
+    state.Status = activeStatus
   } else {
-    state.State = inactiveState
+    state.Status = inactiveStatus
   }
 
   body, err := json.Marshal(&state)

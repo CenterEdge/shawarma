@@ -33,8 +33,8 @@ To see an example deployment utilizing Shawarma, see (./example/example.yaml).
 ## RBAC Rights
 
 Shawarma requires access rights, via a service account, to monitor endpoints with the
-pod's namespace. It is recommended to create a single ClusterRole named `shawarma'
-in the namespace, and then bind it to each service account using Shawarma.
+pod's namespace. It is recommended to create a single Role named `shawarma'
+in the namespace, and then bind it to each service account using a RoleBinding.
 
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1

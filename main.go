@@ -15,10 +15,10 @@ func main() {
 	log.SetFormatter(&log.JSONFormatter{})
 
 	app := cli.NewApp()
-	app.Name = "Blue/Green Monitor"
+	app.Name = "Shawarma"
 	app.Usage = "Sidecar for monitoring a Kubernetes service and notifying the main application when it is live"
 	app.Copyright = "(c) 2019 CenterEdge Software"
-  app.Version = version
+	app.Version = version
 
 	app.Flags = []cli.Flag{
 		cli.StringFlag{
@@ -29,7 +29,13 @@ func main() {
 		},
 	}
 	app.Before = func(c *cli.Context) error {
-		level, err := log.ParseLevel(c.String("log-level"))
+		// In case of empty environment variable, pull default here too
+		levelString := c.String("log-level")
+		if levelString == "" {
+			levelString = "warn"
+		}
+
+		level, err := log.ParseLevel(levelString)
 		if err != nil {
 			return err
 		}
@@ -74,6 +80,11 @@ func main() {
 					PodName:     c.String("pod"),
 					ServiceName: c.String("service"),
 					URL:         c.String("url"),
+				}
+
+				// In case of empty environment variable, pull default here too
+				if info.URL == "" {
+					info.URL = "http://localhost/applicationstate"
 				}
 
 				return monitorService(&info)

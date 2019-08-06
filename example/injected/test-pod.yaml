@@ -1,0 +1,44 @@
+# This is an example of a pod which will receive the Shawarma sidecar
+apiVersion: v1
+kind: Service
+metadata:
+  name: shawarma-example
+  labels:
+    svc: shawarma-example
+spec:
+  selector:
+    app: shawarma-example
+    active: 'true'
+  ports:
+  - name: http
+    port: 80
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shawarma-example
+  labels:
+    app: shawarma-example
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: shawarma-example
+  template:
+    metadata:
+      labels:
+        app: shawarma-example
+        active: 'true'
+      annotations:
+        # Name of the service for Shawarma to monitor
+        shawarma.centeredge.io/service-name: shawarma-example
+        # Override Shawarma log level
+        shawarma.centeredge.io/log-level: debug
+    spec:
+      containers:
+        - name: primary
+          # Simple HTTP server for example purposes, logs requests and responds with 200
+          image: mendhak/http-https-echo
+          ports:
+          - name: http
+            containerPort: 80

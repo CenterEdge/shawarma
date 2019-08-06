@@ -28,7 +28,10 @@ application must simply receive the POST and start or stop background processing
 
 ## Example
 
-To see an example deployment utilizing Shawarma, see (./example/example.yaml).
+To see an example deployment utilizing Shawarma, see (./example/basic/example.yaml).
+
+For a more automated example using annotations to automatically inject sidecars, see
+(./example/injected).
 
 ## RBAC Rights
 
@@ -38,10 +41,9 @@ in the namespace, and then bind it to each service account using a RoleBinding.
 
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
+kind: ClusterRole
 metadata:
   name: shawarma
-  namespace: default # Your namespace here
 rules:
 - apiGroups: [""]
   resources: ["endpoints"]

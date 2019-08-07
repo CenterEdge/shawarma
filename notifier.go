@@ -46,19 +46,19 @@ func notifyStateChange(info *monitorInfo, newStatus bool) error {
 	for i := 0; i < retryAttempts; i++ {
 		client := &http.Client{}
 		resp, err := client.Do(req)
-		if resp == nil {
-			return err
-		}
-		defer resp.Body.Close()
+		if resp != nil {
 
-		log.WithFields(log.Fields{
-			"svc": info.ServiceName,
-			"pod": info.PodName,
-			"ns":  info.Namespace,
-		}).Debug("Notification result ", resp.Status)
+			defer resp.Body.Close()
 
-		if err == nil {
-			return nil
+			log.WithFields(log.Fields{
+				"svc": info.ServiceName,
+				"pod": info.PodName,
+				"ns":  info.Namespace,
+			}).Debug("Notification result ", resp.Status)
+
+			if err == nil {
+				return nil
+			}
 		}
 
 		time.Sleep(retryInterval)

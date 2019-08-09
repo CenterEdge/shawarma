@@ -5,6 +5,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
+	klog "k8s.io/klog"
 )
 
 // Set on build
@@ -13,6 +14,9 @@ var version string
 func main() {
 	log.SetOutput(os.Stdout)
 	log.SetFormatter(&log.JSONFormatter{})
+
+	// Ensure klog also outputs to logrus
+	klog.SetOutput(log.StandardLogger().WriterLevel(log.WarnLevel))
 
 	app := cli.NewApp()
 	app.Name = "Shawarma"

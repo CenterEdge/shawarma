@@ -1,15 +1,32 @@
 # This file should be applied to each namespace where Shawarma sidecars are in use
 # It creates a service account and token to be attached to the Shawarma sidecar
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: shawarma-example
+  labels:
+    shawarma-injection: enabled
+---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
+kind: Role
 metadata:
   name: shawarma
+  namespace: shawarma-example
+rules:
+- apiGroups: [""]
+  resources: ["endpoints"]
+  verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: shawarma
+  namespace: shawarma-example
 subjects:
 - kind: ServiceAccount
   name: shawarma
-  namespace: default
 roleRef:
-  kind: ClusterRole
+  kind: Role
   name: shawarma
   apiGroup: rbac.authorization.k8s.io
 ---
@@ -17,17 +34,4 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: shawarma
-  namespace: default
-secrets:
-- name: shawarma-token
----
-# We must manually create a token for the service account so that it has a known name
-# This name must be "shawarma-token" or be overridden in the webhook deployment using the SHAWARMA_SECRET_TOKEN_NAME env var
-apiVersion: v1
-kind: Secret
-metadata:
-  name: shawarma-token
-  namespace: default
-  annotations:
-    kubernetes.io/service-account.name: shawarma
-type: kubernetes.io/service-account-token
+  namespace: shawarma-example

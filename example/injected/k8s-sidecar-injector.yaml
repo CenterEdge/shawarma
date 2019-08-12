@@ -2,11 +2,30 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: shawarma
+  name: shawarma-webhook
 rules:
 - apiGroups: [""]
-  resources: ["endpoints"]
+  resources: ["serviceaccounts"]
   verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: shawarma
+subjects:
+- kind: ServiceAccount
+  name: shawarma-webhook
+  namespace: kube-system
+roleRef:
+  kind: ClusterRole
+  name: shawarma-webhook
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: shawarma-webhook
+  namespace: kube-system
 ---
 apiVersion: v1
 kind: Service
@@ -57,6 +76,7 @@ spec:
       labels:
         k8s-app: shawarma-webhook
     spec:
+      serviceAccountName: shawarma-webhook
       volumes:
       - name: secrets
         secret:
@@ -64,7 +84,10 @@ spec:
       containers:
       - name: shawarma-webhook
         imagePullPolicy: Always
-        image: centeredge/shawarma-webhook:0.1.0
+        image: centeredge/shawarma-webhook:0.2.0
+        env:
+        - name: LOG_LEVEL
+          value: warn
         ports:
         - name: https
           containerPort: 443
@@ -101,6 +124,12 @@ webhooks:
     apiGroups: [""]
     apiVersions: ["v1"]
     resources: ["pods"]
+  namespaceSelector:
+    # Require that the namespace have the `shawarma-injection: enabled` label
+    matchExpressions:
+    - key: shawarma-injection
+      operator: In
+      values: ["enabled"]
   clientConfig:
     service:
       name: shawarma-webhook

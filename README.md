@@ -59,7 +59,7 @@ so normally it is run using the Docker container `centeredge/shawarma`.
 
 For detailed help:
 
-`docker run --rm -it centeredge/swarma monitor --help`
+`docker run --rm -it centeredge/shawarma monitor --help`
 
 ## Arguments
 

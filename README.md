@@ -1,6 +1,6 @@
 # Shawarma
 
-[![Build Status](https://travis-ci.org/CenterEdge/shawarma.svg?branch=master)](https://travis-ci.org/CenterEdge/shawarma)
+[![ci](https://github.com/CenterEdge/shawarma/actions/workflows/docker-image.yml/badge.svg)](https://github.com/CenterEdge/shawarma/actions/workflows/docker-image.yml)
 
 A Kubernetes sidecar to assist with enabling/disabling background processing during blue/green
 deployments.

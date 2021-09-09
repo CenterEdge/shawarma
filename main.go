@@ -31,12 +31,15 @@ func main() {
 			Value:  "warn",
 			EnvVar: "LOG_LEVEL",
 		},
+		cli.StringFlag{
+			Name:  "kubeconfig",
+			Usage: "Path to a kubeconfig file, if not running in-cluster",
+		},
 	}
 	app.Before = func(c *cli.Context) error {
 		// In case of empty environment variable, pull default here too
 		levelString := c.String("log-level")
 		if levelString == "" {
-			levelString = "warn"
 		}
 
 		level, err := log.ParseLevel(levelString)
@@ -80,10 +83,11 @@ func main() {
 			},
 			Action: func(c *cli.Context) error {
 				info := monitorInfo{
-					Namespace:   c.String("namespace"),
-					PodName:     c.String("pod"),
-					ServiceName: c.String("service"),
-					URL:         c.String("url"),
+					Namespace:    c.String("namespace"),
+					PodName:      c.String("pod"),
+					ServiceName:  c.String("service"),
+					URL:          c.String("url"),
+					PathToConfig: c.GlobalString("kubeconfig"),
 				}
 
 				// In case of empty environment variable, pull default here too

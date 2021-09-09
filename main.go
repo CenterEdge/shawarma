@@ -40,6 +40,7 @@ func main() {
 		// In case of empty environment variable, pull default here too
 		levelString := c.String("log-level")
 		if levelString == "" {
+			levelString = "warn"
 		}
 
 		level, err := log.ParseLevel(levelString)

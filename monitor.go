@@ -12,16 +12,18 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
+	"k8s.io/client-go/tools/clientcmd"
 )
 
 // Tracks if the pod is currently active
 var isActive = false
 
 type monitorInfo struct {
-	Namespace   string
-	PodName     string
-	ServiceName string
-	URL         string
+	Namespace    string
+	PodName      string
+	ServiceName  string
+	URL          string
+	PathToConfig string
 }
 
 func processEndpoint(info *monitorInfo, endpoint *v1.Endpoints) {
@@ -73,8 +75,15 @@ func processStateChange(info *monitorInfo, newState bool) {
 }
 
 func monitorService(info *monitorInfo) error {
-	// creates the in-cluster config
-	config, err := rest.InClusterConfig()
+	var config *rest.Config
+	var err error
+	if info.PathToConfig == "" {
+		// creates the in-cluster config
+		config, err = rest.InClusterConfig()
+	} else {
+		// creates from a kubeconfig file
+		config, err = clientcmd.BuildConfigFromFlags("", info.PathToConfig)
+	}
 	if err != nil {
 		return err
 	}
@@ -130,11 +139,14 @@ func monitorService(info *monitorInfo) error {
 
 		go func() {
 			<-term // wait for SIGINT or SIGTERM
+			log.Debug("Shutdown signal received")
 			stopRequested = true
-			stop <- struct{}{} // trigger the stop channel
+			close(stop) // trigger the stop channel
 		}()
 
+		log.Debug("Starting controller")
 		controller.Run(stop)
+		log.Debug("Controller exited")
 
 		if !stopRequested {
 			log.Warn("Fail out of controller.Run, restarting...")

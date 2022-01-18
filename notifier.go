@@ -39,6 +39,7 @@ func notifyStateChange(info *monitorInfo, newStatus bool) error {
 	}
 
 	req, err := http.NewRequest(http.MethodPost, info.URL, bytes.NewBuffer(body))
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
 	if err != nil {
 		return err
 	}

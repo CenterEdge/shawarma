@@ -7,7 +7,7 @@ import (
 	"time"
 
 	log "github.com/sirupsen/logrus"
-	"k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -19,11 +19,12 @@ import (
 var isActive = false
 
 type monitorInfo struct {
-	Namespace    string
-	PodName      string
-	ServiceName  string
-	URL          string
-	PathToConfig string
+	Namespace     string
+	PodName       string
+	ServiceName   string
+	URL           string
+	PathToConfig  string
+	StateNotifier bool
 }
 
 func processEndpoint(info *monitorInfo, endpoint *v1.Endpoints) {
@@ -66,10 +67,15 @@ func processStateChange(info *monitorInfo, newState bool) {
 	}
 
 	go func() {
-		err := notifyStateChange(info, newState)
-
-		if err != nil {
-			logContext.Error(err)
+		// Set new State
+		setStateChange(newState)
+		// Notify if is enabled
+		if info.StateNotifier {
+			logContext.Debug("Posting state change notification...")
+			err := notifyStateChange(info)
+			if err != nil {
+				logContext.Error(err)
+			}
 		}
 	}()
 }

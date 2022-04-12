@@ -81,20 +81,36 @@ func main() {
 					Usage:  "URL which receives a POST on state change",
 					EnvVar: "SHAWARMA_URL",
 				},
+				cli.StringFlag{
+					Name:   "state-notifier, s",
+					Value:  "true",
+					Usage:  "Enable/Disable state change notification",
+					EnvVar: "SHAWARMA_STATE_NOTIFIER",
+				},
+				cli.StringFlag{
+					Name:   "listen-port, l",
+					Value:  "8099",
+					Usage:  "Default port to be used to start the http server",
+					EnvVar: "LISTEN_PORT",
+				},
 			},
 			Action: func(c *cli.Context) error {
 				info := monitorInfo{
-					Namespace:    c.String("namespace"),
-					PodName:      c.String("pod"),
-					ServiceName:  c.String("service"),
-					URL:          c.String("url"),
-					PathToConfig: c.GlobalString("kubeconfig"),
+					Namespace:     c.String("namespace"),
+					PodName:       c.String("pod"),
+					ServiceName:   c.String("service"),
+					URL:           c.String("url"),
+					StateNotifier: c.Bool("state-notifier"),
+					PathToConfig:  c.GlobalString("kubeconfig"),
 				}
 
 				// In case of empty environment variable, pull default here too
 				if info.URL == "" {
 					info.URL = "http://localhost/applicationstate"
 				}
+
+				// Start server in a Go routine thread
+				go httpServer(c.String("listen-port"))
 
 				return monitorService(&info)
 			},
@@ -105,4 +121,5 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 }

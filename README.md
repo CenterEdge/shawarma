@@ -27,10 +27,11 @@ the load balancer, and uses an HTTP POST to let your application know the state.
 application must simply receive the POST and start or stop background processing.
 
 ## HTTP Endpoint
-An optional feature also provides a simple http server to store the current pod status,
+An optional feature on this sidecar also provides a simple http server to store the current pod status,
 this enable other use cases where the main container can ask to the sidecar without
-the requirement to create a new endpoint on the main service. Simply GET to the endpoint
-`/deploymentstatus` will return the pod service status:
+the need to create a new endpoint on the main service or understand k8s API. 
+A simply GET call to the endpoint `/deploymentstatus` will return the pod service status as json:
+
 ```
 curl -X GET http://localhost:8099/deploymentstatus -i
 HTTP/1.1 200 OK
@@ -41,11 +42,10 @@ Content-Length: 19
 {"status":"active"}                                        
 ```
 
-Where `localhost` will be the shawarma container interface (binding just to local one)
+Where `localhost` will be the shawarma sidecar container interface (binding just to local one)
 
 This configuration needs just an extra env config to set the http server port to listen:
   - LISTEN_PORT (int, default: 8099)
-
 ## Example
 
 To see an example deployment utilizing Shawarma, see (./example/basic/example.yaml).
@@ -93,5 +93,5 @@ If specified both places, the command line takes precendence.
 | --pod           | MY_POD_NAME             | Kubernetes pod name, typically a fieldRef to `fieldPath: metadata.name` |
 | --service       | SHAWARMA_SERVICE        | Name of the Kubernetes service to monitor |
 | --url           | SHAWARMA_URL            | URL which receives a POST on state change, default: <http://localhost/applicationstate> |
-| --state-notifier| SHAWARMA_STATE_NOTIFIER | Enable/Disable POST Notification behavior (true,false) (default: "true") |
+| --state-notifier| SHAWARMA_STATE_NOTIFIER | Enable/Disable POST Notification behavior (bool) (default: "true") |
 | --listen-port   | LISTEN_PORT             | PORT to be used to start the HTTP Server |

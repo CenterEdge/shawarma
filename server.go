@@ -9,7 +9,7 @@ import (
 )
 
 // Handlers
-func deploymentStatus(w http.ResponseWriter, req *http.Request) {
+func deploymentState(w http.ResponseWriter, req *http.Request) {
 	st, err := json.Marshal(&state)
 	if err != nil {
 		panic("Json encoding issue: " + err.Error())
@@ -32,7 +32,7 @@ func _health(w http.ResponseWriter, req *http.Request) {
 func httpServer(port string) {
 
 	// Endpoints Handlers
-	http.HandleFunc("/deploymentstatus", deploymentStatus)
+	http.HandleFunc("/deploymentstate", deploymentState)
 	http.HandleFunc("/_health", _health)
 
 	log.Info(fmt.Sprintf("Starting HTTP Server on port %s", port))

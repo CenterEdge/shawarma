@@ -30,10 +30,10 @@ application must simply receive the POST and start or stop background processing
 An optional feature on this sidecar also provides a simple http server to store the current pod status,
 this enable other use cases where the main container can ask to the sidecar without
 the need to create a new endpoint on the main service or understand k8s API. 
-A simply GET call to the endpoint `/deploymentstatus` will return the pod service status as json:
+A simply GET call to the endpoint `/deploymentstate` will return the pod service status as json:
 
 ```
-curl -X GET http://localhost:8099/deploymentstatus -i
+curl -X GET http://localhost:8099/deploymentstate -i
 HTTP/1.1 200 OK
 Content-Type: application/json
 Date: Tue, 12 Apr 2022 12:32:22 GMT

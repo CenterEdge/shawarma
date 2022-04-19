@@ -18,7 +18,7 @@ type Endpoint struct {
 
 var serverEndpoints = []Endpoint{
 	Endpoint{"GET", "/_health", `{"health": "ok"}`},
-	Endpoint{"GET", "/deploymentstatus", `{"status":"inactive"}`},
+	Endpoint{"GET", "/deploymentstate", `{"status":"inactive"}`},
 }
 
 func TestEndpoints(t *testing.T) {
@@ -51,8 +51,8 @@ func router(endpoint Endpoint, w *httptest.ResponseRecorder, req *http.Request) 
 	if endpoint.url == "/_health" {
 		_health(w, req)
 	}
-	if endpoint.url == "/deploymentstatus" {
-		deploymentStatus(w, req)
+	if endpoint.url == "/deploymentstate" {
+		deploymentState(w, req)
 	}
 
 }

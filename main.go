@@ -81,11 +81,10 @@ func main() {
 					Usage:  "URL which receives a POST on state change",
 					EnvVar: "SHAWARMA_URL",
 				},
-				cli.StringFlag{
-					Name:   "state-notifier, s",
-					Value:  "true",
+				cli.BoolFlag{
+					Name:   "disable-notifier, d",
 					Usage:  "Enable/Disable state change notification",
-					EnvVar: "SHAWARMA_STATE_NOTIFIER",
+					EnvVar: "SHAWARMA_DISABLE_STATE_NOTIFIER",
 				},
 				cli.StringFlag{
 					Name:   "listen-port, l",
@@ -96,12 +95,12 @@ func main() {
 			},
 			Action: func(c *cli.Context) error {
 				info := monitorInfo{
-					Namespace:     c.String("namespace"),
-					PodName:       c.String("pod"),
-					ServiceName:   c.String("service"),
-					URL:           c.String("url"),
-					StateNotifier: c.Bool("state-notifier"),
-					PathToConfig:  c.GlobalString("kubeconfig"),
+					Namespace:            c.String("namespace"),
+					PodName:              c.String("pod"),
+					ServiceName:          c.String("service"),
+					URL:                  c.String("url"),
+					DisableStateNotifier: c.Bool("disable-notifier"),
+					PathToConfig:         c.GlobalString("kubeconfig"),
 				}
 
 				// In case of empty environment variable, pull default here too

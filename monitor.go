@@ -19,12 +19,12 @@ import (
 var isActive = false
 
 type monitorInfo struct {
-	Namespace     string
-	PodName       string
-	ServiceName   string
-	URL           string
-	PathToConfig  string
-	StateNotifier bool
+	Namespace            string
+	PodName              string
+	ServiceName          string
+	URL                  string
+	PathToConfig         string
+	DisableStateNotifier bool
 }
 
 func processEndpoint(info *monitorInfo, endpoint *v1.Endpoints) {
@@ -70,7 +70,7 @@ func processStateChange(info *monitorInfo, newState bool) {
 		// Set new State
 		setStateChange(newState, info)
 		// Notify if is enabled
-		if info.StateNotifier {
+		if !info.DisableStateNotifier {
 			logContext.Debug("Posting state change notification...")
 			err := notifyStateChange(info)
 			if err != nil {

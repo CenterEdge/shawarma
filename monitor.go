@@ -68,7 +68,7 @@ func processStateChange(info *monitorInfo, newState bool) {
 
 	go func() {
 		// Set new State
-		setStateChange(newState)
+		setStateChange(newState, info)
 		// Notify if is enabled
 		if info.StateNotifier {
 			logContext.Debug("Posting state change notification...")

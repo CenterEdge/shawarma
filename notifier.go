@@ -24,13 +24,19 @@ var retryInterval, _ = time.ParseDuration("1s")
 
 var state = stateChangeDto{Status: inactiveStatus}
 
-func setStateChange(newStatus bool) {
+func setStateChange(newStatus bool, info *monitorInfo) {
 	if newStatus {
 		state.Status = activeStatus
 	} else {
 		state.Status = inactiveStatus
 	}
-	log.Debug("State status set to: ", state.Status)
+
+	log.WithFields(log.Fields{
+		"svc": info.ServiceName,
+		"pod": info.PodName,
+		"ns":  info.Namespace,
+	}).Debug("State status set to: ", state.Status)
+
 }
 
 func notifyStateChange(info *monitorInfo) error {

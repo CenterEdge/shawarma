@@ -86,9 +86,9 @@ func main() {
 					Usage:  "Enable/Disable state change notification",
 					EnvVar: "SHAWARMA_DISABLE_STATE_NOTIFIER",
 				},
-				cli.StringFlag{
+				cli.IntFlag{
 					Name:   "listen-port, l",
-					Value:  "8099",
+					Value:  8099,
 					Usage:  "Default port to be used to start the http server",
 					EnvVar: "LISTEN_PORT",
 				},

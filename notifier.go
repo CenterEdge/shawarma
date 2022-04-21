@@ -32,10 +32,11 @@ func setStateChange(newStatus bool, info *monitorInfo) {
 	}
 
 	log.WithFields(log.Fields{
-		"svc": info.ServiceName,
-		"pod": info.PodName,
-		"ns":  info.Namespace,
-	}).Debug("State status set to: ", state.Status)
+		"svc":    info.ServiceName,
+		"pod":    info.PodName,
+		"ns":     info.Namespace,
+		"status": state.Status,
+	}).Debug("State changed.")
 
 }
 

@@ -93,5 +93,5 @@ If specified both places, the command line takes precendence.
 | --pod           | MY_POD_NAME             | Kubernetes pod name, typically a fieldRef to `fieldPath: metadata.name` |
 | --service       | SHAWARMA_SERVICE        | Name of the Kubernetes service to monitor |
 | --url           | SHAWARMA_URL            | URL which receives a POST on state change, default: <http://localhost/applicationstate> |
-| --state-notifier| SHAWARMA_STATE_NOTIFIER | Enable/Disable POST Notification behavior (bool) (default: "true") |
+| --disable-notifier| SHAWARMA_DISABLE_STATE_NOTIFIER | Enable/Disable POST Notification behavior (bool) (default: "true") |
 | --listen-port   | LISTEN_PORT             | PORT to be used to start the HTTP Server |

@@ -27,25 +27,28 @@ the load balancer, and uses an HTTP POST to let your application know the state.
 application must simply receive the POST and start or stop background processing.
 
 ## HTTP Endpoint
+
 An optional feature on this sidecar also provides a simple http server to store the current pod status,
 this enable other use cases where the main container can ask to the sidecar without
-the need to create a new endpoint on the main service or understand k8s API. 
+the need to create a new endpoint on the main service or understand k8s API.
 A simply GET call to the endpoint `/deploymentstate` will return the pod service status as json:
 
-```
+```text
 curl -X GET http://localhost:8099/deploymentstate -i
 HTTP/1.1 200 OK
 Content-Type: application/json
 Date: Tue, 12 Apr 2022 12:32:22 GMT
 Content-Length: 19
 
-{"status":"active"}                                        
+{"status":"active"}
 ```
 
 Where `localhost` will be the shawarma sidecar container interface (binding just to local one)
 
 This configuration needs just an extra env config to set the http server port to listen:
-  - LISTEN_PORT (int, default: 8099)
+
+- LISTEN_PORT (int, default: 8099)
+
 ## Example
 
 To see an example deployment utilizing Shawarma, see (./example/basic/example.yaml).

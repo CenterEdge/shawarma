@@ -22,16 +22,26 @@ type stateChangeDto struct {
 
 var retryInterval, _ = time.ParseDuration("1s")
 
-func notifyStateChange(info *monitorInfo, newStatus bool) error {
-	var err error
+var state = stateChangeDto{Status: inactiveStatus}
 
-	state := stateChangeDto{}
-
+func setStateChange(newStatus bool, info *monitorInfo) {
 	if newStatus {
 		state.Status = activeStatus
 	} else {
 		state.Status = inactiveStatus
 	}
+
+	log.WithFields(log.Fields{
+		"svc":    info.ServiceName,
+		"pod":    info.PodName,
+		"ns":     info.Namespace,
+		"status": state.Status,
+	}).Debug("State changed.")
+
+}
+
+func notifyStateChange(info *monitorInfo) error {
+	var err error
 
 	body, err := json.Marshal(&state)
 	if err != nil {

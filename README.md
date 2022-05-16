@@ -26,6 +26,29 @@ application. It monitors the Kubernetes API to know when the pod is or is not co
 the load balancer, and uses an HTTP POST to let your application know the state. Your
 application must simply receive the POST and start or stop background processing.
 
+## HTTP Endpoint
+
+An optional feature on this sidecar also provides a simple http server to store the current pod status,
+this enable other use cases where the main container can ask to the sidecar without
+the need to create a new endpoint on the main service or understand k8s API.
+A simply GET call to the endpoint `/deploymentstate` will return the pod service status as json:
+
+```text
+curl -X GET http://localhost:8099/deploymentstate -i
+HTTP/1.1 200 OK
+Content-Type: application/json
+Date: Tue, 12 Apr 2022 12:32:22 GMT
+Content-Length: 19
+
+{"status":"active"}
+```
+
+Where `localhost` will be the shawarma sidecar container interface (binding just to local one)
+
+This configuration needs just an extra env config to set the http server port to listen:
+
+- SHAWARMA_LISTEN_PORT (int, default: 8099)
+
 ## Example
 
 To see an example deployment utilizing Shawarma, see (./example/basic/example.yaml).
@@ -66,10 +89,12 @@ For detailed help:
 Most arguments can be specified either on the command line, or via an environment variable.
 If specified both places, the command line takes precendence.
 
-| Name        | Env Var          | Description |
-| ----------- | ---------------- | ----------- |
-| --log-level | LOG_LEVEL        | Set the log level (panic, fatal, error, warn, info, debug, trace) (default: "warn") |
-| --namespace | MY_POD_NAMESPACE | Kubernetes namespace, typically a fieldRef to `fieldPath: metadata.namespace` |
-| --pod       | MY_POD_NAME      | Kubernetes pod name, typically a fieldRef to `fieldPath: metadata.name` |
-| --service   | SHAWARMA_SERVICE | Name of the Kubernetes service to monitor |
-| --url       | SHAWARMA_URL     | URL which receives a POST on state change, default: <http://localhost/applicationstate> |
+| Name            | Env Var                 | Description |
+| --------------- | ----------------------- | ----------- |
+| --log-level     | LOG_LEVEL               | Set the log level (panic, fatal, error, warn, info, debug, trace) (default: "warn") |
+| --namespace     | MY_POD_NAMESPACE        | Kubernetes namespace, typically a fieldRef to `fieldPath: metadata.namespace` |
+| --pod           | MY_POD_NAME             | Kubernetes pod name, typically a fieldRef to `fieldPath: metadata.name` |
+| --service       | SHAWARMA_SERVICE        | Name of the Kubernetes service to monitor |
+| --url           | SHAWARMA_URL            | URL which receives a POST on state change, default: <http://localhost/applicationstate> |
+| --disable-notifier| SHAWARMA_DISABLE_STATE_NOTIFIER | Enable/Disable POST Notification behavior (bool) (default: "true") |
+| --listen-port   | SHAWARMA_LISTEN_PORT    | PORT to be used to start the HTTP Server |

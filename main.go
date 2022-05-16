@@ -90,7 +90,7 @@ func main() {
 					Name:   "listen-port, l",
 					Value:  8099,
 					Usage:  "Default port to be used to start the http server",
-					EnvVar: "LISTEN_PORT",
+					EnvVar: "SHAWARMA_LISTEN_PORT",
 				},
 			},
 			Action: func(c *cli.Context) error {

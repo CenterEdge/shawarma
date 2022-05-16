@@ -47,7 +47,7 @@ Where `localhost` will be the shawarma sidecar container interface (binding just
 
 This configuration needs just an extra env config to set the http server port to listen:
 
-- LISTEN_PORT (int, default: 8099)
+- SHAWARMA_LISTEN_PORT (int, default: 8099)
 
 ## Example
 
@@ -97,4 +97,4 @@ If specified both places, the command line takes precendence.
 | --service       | SHAWARMA_SERVICE        | Name of the Kubernetes service to monitor |
 | --url           | SHAWARMA_URL            | URL which receives a POST on state change, default: <http://localhost/applicationstate> |
 | --disable-notifier| SHAWARMA_DISABLE_STATE_NOTIFIER | Enable/Disable POST Notification behavior (bool) (default: "true") |
-| --listen-port   | LISTEN_PORT             | PORT to be used to start the HTTP Server |
+| --listen-port   | SHAWARMA_LISTEN_PORT    | PORT to be used to start the HTTP Server |

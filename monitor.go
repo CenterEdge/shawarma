@@ -123,7 +123,7 @@ func monitorService(info *monitorInfo) error {
 				DeleteFunc: func(obj interface{}) {
 					endpoint := obj.(*v1.Endpoints)
 
-					log.Debugf("endpoint %s deleted\n", endpoint.Name)
+					log.Debugf("endpoint %s deleted", endpoint.Name)
 
 					if isActive {
 						processStateChange(info, false)
@@ -132,7 +132,7 @@ func monitorService(info *monitorInfo) error {
 				UpdateFunc: func(oldObj, newObj interface{}) {
 					endpoint := newObj.(*v1.Endpoints)
 
-					log.Debugf("endpoint %s changed\n", endpoint.Name)
+					log.Debugf("endpoint %s changed", endpoint.Name)
 					processEndpoint(info, endpoint)
 				},
 			},

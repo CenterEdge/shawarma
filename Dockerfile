@@ -1,4 +1,4 @@
-FROM golang:1.16 as build
+FROM golang:1.18 as build
 
 # Install upx to compress executable after compilation
 RUN apt-get update && \

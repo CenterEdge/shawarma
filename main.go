@@ -4,7 +4,7 @@ import (
 	"os"
 
 	log "github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 	klog "k8s.io/klog"
 )
 
@@ -21,17 +21,18 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "Shawarma"
 	app.Usage = "Sidecar for monitoring a Kubernetes service and notifying the main application when it is live"
-	app.Copyright = "(c) 2019 CenterEdge Software"
+	app.Copyright = "(c) 2019-2022 CenterEdge Software"
 	app.Version = version
 
 	app.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name:   "log-level, l",
-			Usage:  "Set the log level (panic, fatal, error, warn, info, debug, trace)",
-			Value:  "warn",
-			EnvVar: "LOG_LEVEL",
+		&cli.StringFlag{
+			Name:    "log-level",
+			Aliases: []string{"l"},
+			Usage:   "Set the log level (panic, fatal, error, warn, info, debug, trace)",
+			Value:   "warn",
+			EnvVars: []string{"LOG_LEVEL"},
 		},
-		cli.StringFlag{
+		&cli.StringFlag{
 			Name:  "kubeconfig",
 			Usage: "Path to a kubeconfig file, if not running in-cluster",
 		},
@@ -53,44 +54,50 @@ func main() {
 		return nil
 	}
 
-	app.Commands = []cli.Command{
+	app.Commands = []*cli.Command{
 		{
 			Name:    "monitor",
 			Aliases: []string{"m"},
 			Usage:   "Monitor a Kubernetes service",
 			Flags: []cli.Flag{
-				cli.StringFlag{
-					Name:   "service, svc",
-					Usage:  "Kubernetes service to monitor for this pod",
-					EnvVar: "SHAWARMA_SERVICE",
+				&cli.StringFlag{
+					Name:    "service",
+					Aliases: []string{"svc"},
+					Usage:   "Kubernetes service to monitor for this pod",
+					EnvVars: []string{"SHAWARMA_SERVICE"},
 				},
-				cli.StringFlag{
-					Name:   "pod, p",
-					Usage:  "Kubernetes pod to monitor",
-					EnvVar: "MY_POD_NAME",
+				&cli.StringFlag{
+					Name:    "pod",
+					Aliases: []string{"p"},
+					Usage:   "Kubernetes pod to monitor",
+					EnvVars: []string{"MY_POD_NAME"},
 				},
-				cli.StringFlag{
-					Name:   "namespace, n",
-					Value:  "default",
-					Usage:  "Kubernetes namespace to monitor",
-					EnvVar: "MY_POD_NAMESPACE",
+				&cli.StringFlag{
+					Name:    "namespace",
+					Aliases: []string{"n"},
+					Value:   "default",
+					Usage:   "Kubernetes namespace to monitor",
+					EnvVars: []string{"MY_POD_NAMESPACE"},
 				},
-				cli.StringFlag{
-					Name:   "url, u",
-					Value:  "http://localhost/applicationstate",
-					Usage:  "URL which receives a POST on state change",
-					EnvVar: "SHAWARMA_URL",
+				&cli.StringFlag{
+					Name:    "url",
+					Aliases: []string{"u"},
+					Value:   "http://localhost/applicationstate",
+					Usage:   "URL which receives a POST on state change",
+					EnvVars: []string{"SHAWARMA_URL"},
 				},
-				cli.BoolFlag{
-					Name:   "disable-notifier, d",
-					Usage:  "Enable/Disable state change notification",
-					EnvVar: "SHAWARMA_DISABLE_STATE_NOTIFIER",
+				&cli.BoolFlag{
+					Name:    "disable-notifier",
+					Aliases: []string{"d"},
+					Usage:   "Enable/Disable state change notification",
+					EnvVars: []string{"SHAWARMA_DISABLE_STATE_NOTIFIER"},
 				},
-				cli.IntFlag{
-					Name:   "listen-port, l",
-					Value:  8099,
-					Usage:  "Default port to be used to start the http server",
-					EnvVar: "SHAWARMA_LISTEN_PORT",
+				&cli.IntFlag{
+					Name:    "listen-port",
+					Aliases: []string{"l"},
+					Value:   8099,
+					Usage:   "Default port to be used to start the http server",
+					EnvVars: []string{"SHAWARMA_LISTEN_PORT"},
 				},
 			},
 			Action: func(c *cli.Context) error {
@@ -100,7 +107,7 @@ func main() {
 					ServiceName:          c.String("service"),
 					URL:                  c.String("url"),
 					DisableStateNotifier: c.Bool("disable-notifier"),
-					PathToConfig:         c.GlobalString("kubeconfig"),
+					PathToConfig:         c.String("kubeconfig"),
 				}
 
 				// In case of empty environment variable, pull default here too

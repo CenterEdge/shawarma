@@ -5,7 +5,7 @@ import (
 
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
-	klog "k8s.io/klog"
+	klog "k8s.io/klog/v2"
 )
 
 // Set on build

@@ -67,6 +67,11 @@ func main() {
 					EnvVars: []string{"SHAWARMA_SERVICE"},
 				},
 				&cli.StringFlag{
+					Name:    "service-labels",
+					Usage:   "Kubernetes service labels to monitor for this pod, comma-delimited ex. \"label1=value1,label2=value2\"",
+					EnvVars: []string{"SHAWARMA_SERVICE_LABELS"},
+				},
+				&cli.StringFlag{
 					Name:    "pod",
 					Aliases: []string{"p"},
 					Usage:   "Kubernetes pod to monitor",
@@ -105,9 +110,14 @@ func main() {
 					Namespace:            c.String("namespace"),
 					PodName:              c.String("pod"),
 					ServiceName:          c.String("service"),
+					ServiceLabelSelector: c.String("service-labels"),
 					URL:                  c.String("url"),
 					DisableStateNotifier: c.Bool("disable-notifier"),
 					PathToConfig:         c.String("kubeconfig"),
+				}
+
+				if info.ServiceName == "" && info.ServiceLabelSelector == "" {
+					return cli.Exit("The service name or labels must be supplied", 1)
 				}
 
 				// In case of empty environment variable, pull default here too

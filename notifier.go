@@ -31,13 +31,9 @@ func setStateChange(newStatus bool, info *monitorInfo) {
 		state.Status = inactiveStatus
 	}
 
-	log.WithFields(log.Fields{
-		"svc":    info.ServiceName,
-		"pod":    info.PodName,
-		"ns":     info.Namespace,
+	log.WithFields(info.EnrichLogFields(log.Fields{
 		"status": state.Status,
-	}).Debug("State changed.")
-
+	})).Debug("State changed.")
 }
 
 func notifyStateChange(info *monitorInfo) error {
@@ -61,11 +57,7 @@ func notifyStateChange(info *monitorInfo) error {
 
 			defer resp.Body.Close()
 
-			log.WithFields(log.Fields{
-				"svc": info.ServiceName,
-				"pod": info.PodName,
-				"ns":  info.Namespace,
-			}).Debug("Notification result ", resp.Status)
+			log.WithFields(info.ToLogFields()).Debug("Notification result ", resp.Status)
 
 			if err == nil {
 				return nil

@@ -167,8 +167,7 @@ func (monitor *Monitor) Start() error {
 	// Subscribe to state changes
 	monitor.stateChange = make(chan monitorState)
 	go func() {
-		for {
-			state := <-monitor.stateChange
+		for state := range monitor.stateChange {
 			monitor.processStateChange(state)
 		}
 	}()

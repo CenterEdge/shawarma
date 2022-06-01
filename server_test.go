@@ -17,8 +17,8 @@ type Endpoint struct {
 }
 
 var serverEndpoints = []Endpoint{
-	Endpoint{"GET", "/_health", `{"health": "ok"}`},
-	Endpoint{"GET", "/deploymentstate", `{"status":"inactive"}`},
+	{"GET", "/_health", `{"health": "ok"}`},
+	{"GET", "/deploymentstate", `{"status":"inactive","activeServices":[]}`},
 }
 
 func TestEndpoints(t *testing.T) {

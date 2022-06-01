@@ -1,25 +1,31 @@
 package main
 
 import (
-	"os"
-	"os/signal"
-	"syscall"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// Tracks if the pod is currently active
-var isActive = false
+type Monitor struct {
+	Config MonitorConfig
 
-type monitorInfo struct {
+	mutex sync.Mutex
+
+	stop          chan struct{}
+	stopRequested bool
+
+	state       monitorState
+	stateChange chan monitorState
+}
+
+type MonitorConfig struct {
 	Namespace            string
 	PodName              string
 	ServiceName          string
@@ -31,32 +37,40 @@ type monitorInfo struct {
 
 // Tracks the current state
 type monitorState struct {
-	info *monitorInfo
-
+	isActive bool
 	// List of endpoints known to be active, when empty this means we should deactivate the application
-	endpoints []types.UID
+	endpoints []string
 }
 
-func (info *monitorInfo) EnrichLogFields(fields log.Fields) log.Fields {
-	fields["pod"] = info.PodName
-	fields["ns"] = info.Namespace
+func (config *MonitorConfig) EnrichLogFields(fields log.Fields) log.Fields {
+	fields["pod"] = config.PodName
+	fields["ns"] = config.Namespace
 
-	if len(info.ServiceName) > 0 {
-		fields["svc"] = info.ServiceName
+	if len(config.ServiceName) > 0 {
+		fields["svc"] = config.ServiceName
 	}
 
-	if len(info.ServiceLabelSelector) > 0 {
-		fields["lbl"] = info.ServiceLabelSelector
+	if len(config.ServiceLabelSelector) > 0 {
+		fields["lbl"] = config.ServiceLabelSelector
 	}
 
 	return fields
 }
 
-func (info *monitorInfo) ToLogFields() log.Fields {
-	return info.EnrichLogFields(log.Fields{})
+func (config *MonitorConfig) ToLogFields() log.Fields {
+	return config.EnrichLogFields(log.Fields{})
 }
 
-func processEndpoint(state *monitorState, endpoint *v1.Endpoints, isAddOrUpdate bool) {
+func NewMonitor(config MonitorConfig) Monitor {
+	return Monitor{
+		Config: config,
+	}
+}
+
+func (monitor *Monitor) processEndpoint(endpoint *v1.Endpoints, isAddOrUpdate bool) {
+	monitor.mutex.Lock()
+	defer monitor.mutex.Unlock()
+
 	foundPod := false
 
 	if isAddOrUpdate {
@@ -64,8 +78,8 @@ func processEndpoint(state *monitorState, endpoint *v1.Endpoints, isAddOrUpdate 
 			for _, address := range subset.Addresses {
 				if address.TargetRef != nil &&
 					address.TargetRef.Kind == "Pod" &&
-					address.TargetRef.Namespace == state.info.Namespace &&
-					address.TargetRef.Name == state.info.PodName {
+					address.TargetRef.Namespace == monitor.Config.Namespace &&
+					address.TargetRef.Name == monitor.Config.PodName {
 					foundPod = true
 					break
 				}
@@ -78,59 +92,68 @@ func processEndpoint(state *monitorState, endpoint *v1.Endpoints, isAddOrUpdate 
 	}
 
 	endpointIndex := -1
-	for i := range state.endpoints {
-		if state.endpoints[i] == endpoint.UID {
+	for i := range monitor.state.endpoints {
+		if monitor.state.endpoints[i] == endpoint.Name {
 			endpointIndex = i
 			break
 		}
 	}
 
+	hasChangedEndpoints := false
 	if foundPod && endpointIndex == -1 {
-		state.endpoints = append(state.endpoints, endpoint.UID)
+		monitor.state.endpoints = append(monitor.state.endpoints, endpoint.Name)
+		hasChangedEndpoints = true
 	} else if !foundPod && endpointIndex >= 0 {
-		state.endpoints = append(state.endpoints[:endpointIndex], state.endpoints[endpointIndex+1:]...)
+		monitor.state.endpoints = append(monitor.state.endpoints[:endpointIndex], monitor.state.endpoints[endpointIndex+1:]...)
+		hasChangedEndpoints = true
 	}
 
-	shouldBeActive := len(state.endpoints) > 0
-	if shouldBeActive != isActive {
-		processStateChange(state.info, shouldBeActive)
-	}
-}
+	shouldBeActive := len(monitor.state.endpoints) > 0
+	if shouldBeActive != monitor.state.isActive || hasChangedEndpoints {
+		logContext := log.WithFields(monitor.Config.ToLogFields())
 
-func processStateChange(info *monitorInfo, newState bool) {
-	isActive = newState
+		if shouldBeActive != monitor.state.isActive {
+			monitor.state.isActive = shouldBeActive
 
-	logContext := log.WithFields(info.ToLogFields())
-
-	if newState {
-		logContext.Info("Activated")
-	} else {
-		logContext.Info("Deactivated")
-	}
-
-	go func() {
-		// Set new State
-		setStateChange(newState, info)
-		// Notify if is enabled
-		if !info.DisableStateNotifier {
-			logContext.Debug("Posting state change notification...")
-			err := notifyStateChange(info)
-			if err != nil {
-				logContext.Error(err)
+			if shouldBeActive {
+				logContext.Info("Activated")
+			} else {
+				logContext.Info("Deactivated")
 			}
+		} else {
+			logContext.Info("Endpoints changed")
 		}
-	}()
+
+		monitor.state.isActive = shouldBeActive
+		monitor.stateChange <- monitor.state
+	}
 }
 
-func monitorService(info *monitorInfo) error {
+func (monitor *Monitor) processStateChange(state monitorState) {
+	logContext := log.WithFields(monitor.Config.ToLogFields())
+
+	// Set new State
+	setStateChange(&state, logContext)
+
+	// Notify if is enabled
+	if !monitor.Config.DisableStateNotifier {
+		logContext.Debug("Posting state change notification...")
+		err := notifyStateChange(monitor.Config.URL, logContext)
+		if err != nil {
+			logContext.Error(err)
+		}
+	}
+}
+
+func (monitor *Monitor) Start() error {
 	var config *rest.Config
 	var err error
-	if info.PathToConfig == "" {
+	if monitor.Config.PathToConfig == "" {
 		// creates the in-cluster config
 		config, err = rest.InClusterConfig()
 	} else {
 		// creates from a kubeconfig file
-		config, err = clientcmd.BuildConfigFromFlags("", info.PathToConfig)
+		config, err = clientcmd.BuildConfigFromFlags("", monitor.Config.PathToConfig)
 	}
 	if err != nil {
 		return err
@@ -141,23 +164,28 @@ func monitorService(info *monitorInfo) error {
 		return err
 	}
 
-	// Maintain the state here for use in the callback below
-	state := monitorState{
-		info:      info,
-		endpoints: []types.UID{},
-	}
+	// Subscribe to state changes
+	monitor.stateChange = make(chan monitorState)
+	go func() {
+		for {
+			state := <-monitor.stateChange
+			monitor.processStateChange(state)
+		}
+	}()
+	defer close(monitor.stateChange)
 
-	for stopRequested := false; !stopRequested; {
+	monitor.stop = make(chan struct{})
+	for monitor.stopRequested = false; !monitor.stopRequested; {
 		watchList := cache.NewFilteredListWatchFromClient(
 			clientset.CoreV1().RESTClient(),
 			"endpoints",
-			info.Namespace,
+			monitor.Config.Namespace,
 			func(options *metav1.ListOptions) {
-				if len(info.ServiceName) > 0 {
-					options.FieldSelector = "metadata.name=" + info.ServiceName
+				if len(monitor.Config.ServiceName) > 0 {
+					options.FieldSelector = "metadata.name=" + monitor.Config.ServiceName
 				}
 
-				options.LabelSelector = info.ServiceLabelSelector
+				options.LabelSelector = monitor.Config.ServiceLabelSelector
 			},
 		)
 
@@ -170,43 +198,36 @@ func monitorService(info *monitorInfo) error {
 					endpoint := obj.(*v1.Endpoints)
 
 					log.Debugf("endpoint %s added", endpoint.Name)
-					processEndpoint(&state, endpoint, true)
+					monitor.processEndpoint(endpoint, true)
 				},
 				DeleteFunc: func(obj interface{}) {
 					endpoint := obj.(*v1.Endpoints)
 
 					log.Debugf("endpoint %s deleted", endpoint.Name)
-					processEndpoint(&state, endpoint, false)
+					monitor.processEndpoint(endpoint, false)
 				},
 				UpdateFunc: func(oldObj, newObj interface{}) {
 					endpoint := newObj.(*v1.Endpoints)
 
 					log.Debugf("endpoint %s changed", endpoint.Name)
-					processEndpoint(&state, endpoint, true)
+					monitor.processEndpoint(endpoint, true)
 				},
 			},
 		)
 
-		stop := make(chan struct{})
-
-		term := make(chan os.Signal, 1)
-		signal.Notify(term, syscall.SIGINT, syscall.SIGTERM)
-
-		go func() {
-			<-term // wait for SIGINT or SIGTERM
-			log.Debug("Shutdown signal received")
-			stopRequested = true
-			close(stop) // trigger the stop channel
-		}()
-
 		log.Debug("Starting controller")
-		controller.Run(stop)
+		controller.Run(monitor.stop)
 		log.Debug("Controller exited")
 
-		if !stopRequested {
+		if !monitor.stopRequested {
 			log.Warn("Fail out of controller.Run, restarting...")
 		}
 	}
 
 	return nil
+}
+
+func (monitor *Monitor) Stop() {
+	monitor.stopRequested = true
+	close(monitor.stop)
 }

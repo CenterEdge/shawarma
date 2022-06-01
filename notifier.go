@@ -17,26 +17,32 @@ const (
 )
 
 type stateChangeDto struct {
-	Status string `json:"status"`
+	Status         string   `json:"status"`
+	ActiveServices []string `json:"activeServices"`
 }
 
 var retryInterval, _ = time.ParseDuration("1s")
 
-var state = stateChangeDto{Status: inactiveStatus}
+var state = stateChangeDto{
+	Status:         inactiveStatus,
+	ActiveServices: []string{},
+}
 
-func setStateChange(newStatus bool, info *monitorInfo) {
-	if newStatus {
+func setStateChange(monitorState *monitorState, logContext *log.Entry) {
+	if monitorState.isActive {
 		state.Status = activeStatus
 	} else {
 		state.Status = inactiveStatus
 	}
 
-	log.WithFields(info.EnrichLogFields(log.Fields{
+	state.ActiveServices = monitorState.endpoints
+
+	logContext.WithFields(log.Fields{
 		"status": state.Status,
-	})).Debug("State changed.")
+	}).Debug("State changed.")
 }
 
-func notifyStateChange(info *monitorInfo) error {
+func notifyStateChange(url string, logContext *log.Entry) error {
 	var err error
 
 	body, err := json.Marshal(&state)
@@ -44,7 +50,7 @@ func notifyStateChange(info *monitorInfo) error {
 		return err
 	}
 
-	req, err := http.NewRequest(http.MethodPost, info.URL, bytes.NewBuffer(body))
+	req, err := http.NewRequest(http.MethodPost, url, bytes.NewBuffer(body))
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 	if err != nil {
 		return err
@@ -57,7 +63,7 @@ func notifyStateChange(info *monitorInfo) error {
 
 			defer resp.Body.Close()
 
-			log.WithFields(info.ToLogFields()).Debug("Notification result ", resp.Status)
+			logContext.Debug("Notification result ", resp.Status)
 
 			if err == nil {
 				return nil

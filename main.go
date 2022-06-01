@@ -2,6 +2,8 @@ package main
 
 import (
 	"os"
+	"os/signal"
+	"syscall"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -106,7 +108,7 @@ func main() {
 				},
 			},
 			Action: func(c *cli.Context) error {
-				info := monitorInfo{
+				config := MonitorConfig{
 					Namespace:            c.String("namespace"),
 					PodName:              c.String("pod"),
 					ServiceName:          c.String("service"),
@@ -116,19 +118,30 @@ func main() {
 					PathToConfig:         c.String("kubeconfig"),
 				}
 
-				if info.ServiceName == "" && info.ServiceLabelSelector == "" {
+				if config.ServiceName == "" && config.ServiceLabelSelector == "" {
 					return cli.Exit("The service name or labels must be supplied", 1)
 				}
 
 				// In case of empty environment variable, pull default here too
-				if info.URL == "" {
-					info.URL = "http://localhost/applicationstate"
+				if config.URL == "" {
+					config.URL = "http://localhost/applicationstate"
 				}
 
 				// Start server in a Go routine thread
 				go httpServer(c.String("listen-port"))
 
-				return monitorService(&info)
+				monitor := NewMonitor(config)
+
+				term := make(chan os.Signal, 1)
+				signal.Notify(term, syscall.SIGINT, syscall.SIGTERM)
+
+				go func() {
+					<-term // wait for SIGINT or SIGTERM
+					log.Debug("Shutdown signal received")
+					monitor.Stop()
+				}()
+
+				return monitor.Start()
 			},
 		},
 	}

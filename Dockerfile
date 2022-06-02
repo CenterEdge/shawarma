@@ -16,7 +16,12 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -ldflags="-s -w -X main.version=${VERSION:-0.0.0}"
 
 # Copy compiled output to a fresh image
-FROM scratch
+# Refer to https://github.com/GoogleContainerTools/distroless for more details
+FROM gcr.io/distroless/static:nonroot
+WORKDIR /app
+
 COPY --from=build /app/shawarma /app/shawarma
+
+USER 65532:65532
 ENTRYPOINT [ "/app/shawarma" ]
 CMD ["monitor"]

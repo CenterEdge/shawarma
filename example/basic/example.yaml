@@ -76,6 +76,11 @@ spec:
         - name: shawarma
           # Using latest is not recommended for production, specify a version number
           image: centeredge/shawarma:latest
+          securityContext:
+            allowPrivilegeEscalation: false
+            seccompProfile:
+              type: RuntimeDefault
+            runAsNonRoot: true
           env:
             - name: LOG_LEVEL
               value: DEBUG

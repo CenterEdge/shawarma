@@ -6,12 +6,13 @@ This simplies deployment pipelines by providing a standarized Shawarma configura
 ## Deploying
 
 1. Ensure that your cluster has [cert-manager](https://cert-manager.io/) installed.
-2. `kubectl apply -f .\k8s-sidecar-injector.yaml`
-3. Modify `rbac.yaml` for each namespace which will use Shawarma (it is setup for `default`), and apply using `kubectl apply`.
+2. `kubectl apply -f ./k8s-sidecar-injector.yaml`
+3. Modify `rbac.yaml` for each namespace which will use Shawarma (it is setup for `shawarma-example`), and apply using `kubectl apply -f ./rbac.yaml`.
 
 ## Usage
 
-To use, simply include a `shawarma.centeredge.io/service-name` annotation on a pod. This annotation should reference the service
-which should be monitored to determine application state. [See here for a full list of available annotations](https://github.com/CenterEdge/shawarma-webhook#annotations).
+To use, simply include a `shawarma.centeredge.io/service-name` or `shawarma.centeredge.io/service-labels` annotation on a pod.
+This annotation should reference the service which should be monitored to determine application state.
+[See here for a full list of available annotations](https://github.com/CenterEdge/shawarma-webhook#annotations).
 
 An example pod deployment can be found in (./test-pod.yaml).

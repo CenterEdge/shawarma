@@ -1,14 +1,16 @@
-# This is an example of a pod which will receive the Shawarma sidecar
+### This is an example of a pod which will receive the Shawarma sidecar
 apiVersion: v1
 kind: Service
 metadata:
   name: shawarma-example
   namespace: shawarma-example
   labels:
-    svc: shawarma-example
+    app: shawarma-example
+    env: prod
 spec:
   selector:
     app: shawarma-example
+    env: prod
     active: 'true'
   ports:
   - name: http
@@ -21,26 +23,50 @@ metadata:
   namespace: shawarma-example
   labels:
     app: shawarma-example
+    env: prod
 spec:
   replicas: 2
   selector:
     matchLabels:
       app: shawarma-example
+      env: prod
   template:
     metadata:
       labels:
         app: shawarma-example
+        env: prod
         active: 'true'
       annotations:
-        # Name of the service for Shawarma to monitor
-        shawarma.centeredge.io/service-name: shawarma-example
-        # Override Shawarma log level
+        ### Labels of the services for Shawarma to monitor
+        shawarma.centeredge.io/service-labels: app=shawarma-example,env=prod
+        ### Optionally, use the name of the service for Shawarma to monitor instead
+        # shawarma.centeredge.io/service-name: shawarma-example
+        ### Override Shawarma log level
         shawarma.centeredge.io/log-level: debug
     spec:
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: primary
-          # Simple HTTP server for example purposes, logs requests and responds with 200
+          ### Simple HTTP server for example purposes, logs requests and responds with 200
           image: mendhak/http-https-echo
+          securityContext:
+            allowPrivilegeEscalation: false
           ports:
           - name: http
             containerPort: 80
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            timeoutSeconds: 3
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              cpu: 10m
+              memory: 64Mi

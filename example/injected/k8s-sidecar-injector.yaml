@@ -90,6 +90,10 @@ spec:
         k8s-app: shawarma-webhook
     spec:
       serviceAccountName: shawarma-webhook
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+        runAsNonRoot: true
       volumes:
       - name: secrets
         secret:
@@ -97,7 +101,9 @@ spec:
       containers:
       - name: shawarma-webhook
         imagePullPolicy: Always
-        image: centeredge/shawarma-webhook:1.0.0
+        image: centeredge/shawarma-webhook:1.1.1
+        securityContext:
+          allowPrivilegeEscalation: false
         env:
         - name: LOG_LEVEL
           value: warn

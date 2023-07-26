@@ -6,9 +6,7 @@
       "dockerfile": "Dockerfile",
       "args": {
         // Update the VARIANT arg to pick a version of Go: 1, 1.16, 1.15
-        "VARIANT": "1.18",
-        // Options
-        "NODE_VERSION": "none"
+        "VARIANT": "1.20"
       }
     },
     "runArgs": [ "--init", "--cap-add=SYS_PTRACE", "--security-opt", "seccomp=unconfined" ],
@@ -22,20 +20,24 @@
     "overrideCommand": false,
 
     // Set *default* container specific settings.json values on container create.
-    "settings": {
-      "go.toolsManagement.checkForUpdates": "local",
-      "go.useLanguageServer": true,
-      "go.gopath": "/go",
-      "go.goroot": "/usr/local/go"
+    "customizations": {
+      "vscode": {
+        "settings": {
+          "go.toolsManagement.checkForUpdates": "local",
+          "go.useLanguageServer": true,
+          "go.gopath": "/go",
+          "go.goroot": "/usr/local/go"
+        },
+        // Add the IDs of extensions you want installed when the container is created.
+        "extensions": [
+          "github.vscode-github-actions",
+          "github.vscode-pull-request-github",
+          "golang.Go",
+          "ms-azuretools.vscode-docker",
+          "ms-kubernetes-tools.vscode-kubernetes-tools"
+        ]
+      }
     },
-
-    // Add the IDs of extensions you want installed when the container is created.
-    "extensions": [
-      "github.vscode-pull-request-github",
-      "golang.Go",
-      "ms-azuretools.vscode-docker",
-      "ms-kubernetes-tools.vscode-kubernetes-tools"
-    ],
 
     // Use 'forwardPorts' to make a list of ports inside the container available locally.
     // "forwardPorts": [],

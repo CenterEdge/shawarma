@@ -1,4 +1,6 @@
 .git/
+.devcontainer/
+.github/
 shawarma
 *.exe
 example/

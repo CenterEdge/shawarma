@@ -10,14 +10,17 @@ import (
 
 // Handlers
 func deploymentState(w http.ResponseWriter, req *http.Request) {
-	st, err := json.Marshal(&state)
+	bytes, err := json.Marshal(&state)
 	if err != nil {
 		panic("Json encoding issue: " + err.Error())
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	fmt.Fprintf(w, string(st))
+	if _, err := w.Write(bytes); err != nil {
+		panic("Write issue: " + err.Error())
+	}
 }
 
 func _health(w http.ResponseWriter, req *http.Request) {

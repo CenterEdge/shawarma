@@ -14,7 +14,7 @@ spec:
     active: 'true'
   ports:
   - name: http
-    port: 80
+    port: 8080
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -43,6 +43,7 @@ spec:
         # shawarma.centeredge.io/service-name: shawarma-example
         ### Override Shawarma log level
         shawarma.centeredge.io/log-level: debug
+        shawarma.centeredge.io/state-url: http://localhost:8080/applicationstate
     spec:
       securityContext:
         seccompProfile:
@@ -55,7 +56,7 @@ spec:
             allowPrivilegeEscalation: false
           ports:
           - name: http
-            containerPort: 80
+            containerPort: 8080
           readinessProbe:
             httpGet:
               path: /

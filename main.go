@@ -23,7 +23,7 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "Shawarma"
 	app.Usage = "Sidecar for monitoring a Kubernetes service and notifying the main application when it is live"
-	app.Copyright = "(c) 2019-2022 CenterEdge Software"
+	app.Copyright = "(c) 2019-2025 CenterEdge Software"
 	app.Version = version
 
 	app.Flags = []cli.Flag{

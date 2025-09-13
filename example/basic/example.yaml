@@ -37,7 +37,7 @@ spec:
     active: 'true'
   ports:
   - name: http
-    port: 80
+    port: 8080
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -65,7 +65,7 @@ spec:
           image: mendhak/http-https-echo
           ports:
           - name: http
-            containerPort: 80
+            containerPort: 8080
           resources:
             requests:
               cpu: 100m
@@ -96,7 +96,7 @@ spec:
                   fieldPath: metadata.annotations['shawarma.centeredge.io/service-labels']
             - name: SHAWARMA_URL
               # Will POST state to this URL as pod is attached/detached from the service
-              value: http://localhost/applicationstate
+              value: http://localhost:8080/applicationstate
             - name: MY_POD_NAME
               valueFrom:
                 fieldRef:

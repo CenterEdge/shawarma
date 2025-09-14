@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 const (
@@ -28,7 +28,7 @@ var state = stateChangeDto{
 	ActiveServices: []string{},
 }
 
-func setStateChange(monitorState *monitorState, logContext *log.Entry) {
+func setStateChange(monitorState *monitorState, logger *zap.Logger) {
 	if monitorState.isActive {
 		state.Status = activeStatus
 	} else {
@@ -37,12 +37,12 @@ func setStateChange(monitorState *monitorState, logContext *log.Entry) {
 
 	state.ActiveServices = monitorState.endpoints
 
-	logContext.WithFields(log.Fields{
-		"status": state.Status,
-	}).Debug("State changed.")
+	logger.Debug("State changed.",
+		zap.String("status", state.Status),
+	)
 }
 
-func notifyStateChange(url string, logContext *log.Entry) error {
+func notifyStateChange(url string, logger *zap.Logger) error {
 	var err error
 
 	body, err := json.Marshal(&state)
@@ -63,7 +63,9 @@ func notifyStateChange(url string, logContext *log.Entry) error {
 
 			defer resp.Body.Close()
 
-			logContext.Debug("Notification result ", resp.Status)
+			logger.Debug("Notification result", 
+				zap.String("status", resp.Status),
+			)
 
 			if err == nil {
 				return nil

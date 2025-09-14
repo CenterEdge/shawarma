@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
+	"flag"
 	"os"
 	"os/signal"
 	"syscall"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v3"
+	"go.uber.org/zap"
 	klog "k8s.io/klog/v2"
 )
 
@@ -15,11 +16,21 @@ import (
 var version string
 
 func main() {
-	log.SetOutput(os.Stdout)
-	log.SetFormatter(&log.JSONFormatter{})
+	logLevel := zap.NewAtomicLevelAt(zap.WarnLevel)
+	logConfig := zap.NewProductionConfig()
+	logConfig.Level = logLevel
 
-	// Ensure klog also outputs to logrus
-	klog.SetOutput(log.StandardLogger().WriterLevel(log.WarnLevel))
+	logger := zap.Must(logConfig.Build())
+	defer logger.Sync() // flushes buffer, if any
+
+	zap.ReplaceGlobals(logger)
+
+	// Ensure klog also outputs to stderr
+	flag.Set("alsologtostderr", "true")
+	flag.Parse()
+	klogFlags := flag.NewFlagSet("klog", flag.ExitOnError)
+	klog.InitFlags(klogFlags)
+	defer klog.Flush()
 
 	app := cli.Command{
 		Name:    "Shawarma",
@@ -42,16 +53,13 @@ func main() {
 		Before: func(ctx context.Context, c *cli.Command) (context.Context, error) {
 			// In case of empty environment variable, pull default here too
 			levelString := c.String("log-level")
-			if levelString == "" {
-				levelString = "warn"
-			}
-
-			level, err := log.ParseLevel(levelString)
-			if err != nil {
-				return ctx, err
-			}
-
-			log.SetLevel(level)
+			if levelString != "" {
+				if level, err := zap.ParseAtomicLevel(levelString); err == nil {
+					logLevel.SetLevel(level.Level())
+				} else {
+					return ctx, err
+				}
+			}			
 
 			return ctx, nil
 		},
@@ -129,16 +137,16 @@ func main() {
 				}
 
 				// Start server in a Go routine thread
-				go httpServer(c.Uint16("listen-port"))
+				go httpServer(c.Uint16("listen-port"), logger)
 
-				monitor := NewMonitor(config)
+				monitor := NewMonitor(config, logger)
 
 				term := make(chan os.Signal, 1)
 				signal.Notify(term, syscall.SIGINT, syscall.SIGTERM)
 
 				go func() {
 					<-term // wait for SIGINT or SIGTERM
-					log.Debug("Shutdown signal received")
+					logger.Debug("Shutdown signal received")
 					monitor.Stop()
 				}()
 
@@ -149,7 +157,7 @@ func main() {
 
 	err := app.Run(context.Background(), os.Args)
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal("Fatal error",
+			zap.Error(err))
 	}
-
 }

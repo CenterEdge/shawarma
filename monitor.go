@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes"
@@ -15,6 +15,7 @@ import (
 
 type Monitor struct {
 	Config MonitorConfig
+	Logger *zap.Logger
 
 	mutex sync.Mutex
 
@@ -42,28 +43,27 @@ type monitorState struct {
 	endpoints []string
 }
 
-func (config *MonitorConfig) EnrichLogFields(fields log.Fields) log.Fields {
-	fields["pod"] = config.PodName
-	fields["ns"] = config.Namespace
+func (config *MonitorConfig) CreateChildLogger(logger *zap.Logger) *zap.Logger {
+	// Start with a length of 2, but allocated capacity of 3 to avoid reallocations
+	// when we add a service name or labels
+	fields := make([]zap.Field, 2, 3)
+	fields[0] = zap.String("pod", config.PodName)
+	fields[1] = zap.String("ns", config.Namespace)
 
 	if len(config.ServiceName) > 0 {
-		fields["svc"] = config.ServiceName
+		fields = append(fields, zap.String("svc", config.ServiceName))
 	}
-
 	if len(config.ServiceLabelSelector) > 0 {
-		fields["lbl"] = config.ServiceLabelSelector
+		fields = append(fields, zap.String("lbl", config.ServiceLabelSelector))
 	}
 
-	return fields
+	return logger.With(fields...)
 }
 
-func (config *MonitorConfig) ToLogFields() log.Fields {
-	return config.EnrichLogFields(log.Fields{})
-}
-
-func NewMonitor(config MonitorConfig) Monitor {
+func NewMonitor(config MonitorConfig, logger *zap.Logger) Monitor {
 	return Monitor{
 		Config: config,
+		Logger: logger,
 	}
 }
 
@@ -110,18 +110,18 @@ func (monitor *Monitor) processEndpoint(endpoint *v1.Endpoints, isAddOrUpdate bo
 
 	shouldBeActive := len(monitor.state.endpoints) > 0
 	if shouldBeActive != monitor.state.isActive || hasChangedEndpoints {
-		logContext := log.WithFields(monitor.Config.ToLogFields())
+		childLogger := monitor.Config.CreateChildLogger(monitor.Logger)
 
 		if shouldBeActive != monitor.state.isActive {
 			monitor.state.isActive = shouldBeActive
 
 			if shouldBeActive {
-				logContext.Info("Activated")
+				childLogger.Info("Activated")
 			} else {
-				logContext.Info("Deactivated")
+				childLogger.Info("Deactivated")
 			}
 		} else {
-			logContext.Info("Endpoints changed")
+			childLogger.Info("Endpoints changed")
 		}
 
 		monitor.state.isActive = shouldBeActive
@@ -130,17 +130,18 @@ func (monitor *Monitor) processEndpoint(endpoint *v1.Endpoints, isAddOrUpdate bo
 }
 
 func (monitor *Monitor) processStateChange(state monitorState) {
-	logContext := log.WithFields(monitor.Config.ToLogFields())
+	childLogger := monitor.Config.CreateChildLogger(monitor.Logger)
 
 	// Set new State
-	setStateChange(&state, logContext)
+	setStateChange(&state, childLogger)
 
 	// Notify if is enabled
 	if !monitor.Config.DisableStateNotifier {
-		logContext.Debug("Posting state change notification...")
-		err := notifyStateChange(monitor.Config.URL, logContext)
+		childLogger.Debug("Posting state change notification...")
+		err := notifyStateChange(monitor.Config.URL, childLogger)
 		if err != nil {
-			logContext.Error(err)
+			childLogger.Error("Error processing state change",
+				zap.Error(err))
 		}
 	}
 }
@@ -196,30 +197,33 @@ func (monitor *Monitor) Start() error {
 				AddFunc: func(obj interface{}) {
 					endpoint := obj.(*v1.Endpoints)
 
-					log.Debugf("endpoint %s added", endpoint.Name)
+					monitor.Logger.Debug("endpoint added",
+						zap.String("endpoint", endpoint.Name))
 					monitor.processEndpoint(endpoint, true)
 				},
 				DeleteFunc: func(obj interface{}) {
 					endpoint := obj.(*v1.Endpoints)
 
-					log.Debugf("endpoint %s deleted", endpoint.Name)
+					monitor.Logger.Debug("endpoint deleted",
+						zap.String("endpoint", endpoint.Name))
 					monitor.processEndpoint(endpoint, false)
 				},
 				UpdateFunc: func(oldObj, newObj interface{}) {
 					endpoint := newObj.(*v1.Endpoints)
 
-					log.Debugf("endpoint %s changed", endpoint.Name)
+					monitor.Logger.Debug("endpoint changed",
+						zap.String("endpoint", endpoint.Name))
 					monitor.processEndpoint(endpoint, true)
 				},
 			},
 		)
 
-		log.Debug("Starting controller")
+		monitor.Logger.Debug("Starting controller")
 		controller.Run(monitor.stop)
-		log.Debug("Controller exited")
+		monitor.Logger.Debug("Controller exited")
 
 		if !monitor.stopRequested {
-			log.Warn("Fail out of controller.Run, restarting...")
+			monitor.Logger.Warn("Fail out of controller.Run, restarting...")
 		}
 	}
 

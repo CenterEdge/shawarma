@@ -67,12 +67,19 @@ Shawarma requires access rights, via a service account, to monitor endpoints wit
 pod's namespace. It is recommended to create a single Role named `shawarma'
 in the namespace, and then bind it to each service account using a RoleBinding.
 
+For the current version of Shawarma, only `endpointslices` is required. However, the example
+below includes `endpoints` for backward compatibility with older versions of Shawarma
+running mixed in the same cluster.
+
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: shawarma
 rules:
+- apiGroups: ["discovery.k8s.io"]
+  resources: ["endpointslices"]
+  verbs: ["get", "watch", "list"]
 - apiGroups: [""]
   resources: ["endpoints"]
   verbs: ["get", "watch", "list"]

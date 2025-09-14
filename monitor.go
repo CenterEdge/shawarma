@@ -1,12 +1,14 @@
 package main
 
 import (
-	"sync"
+	"reflect"
+	"slices"
 	"time"
 
 	"go.uber.org/zap"
-	v1 "k8s.io/api/core/v1"
+	discovery "k8s.io/api/discovery/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
@@ -17,7 +19,7 @@ type Monitor struct {
 	Config MonitorConfig
 	Logger *zap.Logger
 
-	mutex sync.Mutex
+	cache *EndpointSliceCache
 
 	stop          chan struct{}
 	stopRequested bool
@@ -40,7 +42,7 @@ type MonitorConfig struct {
 type monitorState struct {
 	isActive bool
 	// List of endpoints known to be active, when empty this means we should deactivate the application
-	endpoints []string
+	serviceNames []types.NamespacedName
 }
 
 func (config *MonitorConfig) CreateChildLogger(logger *zap.Logger) *zap.Logger {
@@ -64,69 +66,74 @@ func NewMonitor(config MonitorConfig, logger *zap.Logger) Monitor {
 	return Monitor{
 		Config: config,
 		Logger: logger,
+		cache:  NewEndpointSliceCache(),
 	}
 }
 
-func (monitor *Monitor) processEndpoint(endpoint *v1.Endpoints, isAddOrUpdate bool) {
-	monitor.mutex.Lock()
-	defer monitor.mutex.Unlock()
+func (monitor *Monitor) processEndpointSlice(endpointSlice *discovery.EndpointSlice, remove bool) {
+	changed := monitor.cache.Update(endpointSlice, remove)
+	if !changed {
+		// No change in the cache, nothing to do
+		return
+	}
 
-	foundPod := false
+	serviceNames := []types.NamespacedName{}
 
-	if isAddOrUpdate {
-		for _, subset := range endpoint.Subsets {
-			for _, address := range subset.Addresses {
-				if address.TargetRef != nil &&
-					address.TargetRef.Kind == "Pod" &&
-					address.TargetRef.Namespace == monitor.Config.Namespace &&
-					address.TargetRef.Name == monitor.Config.PodName {
-					foundPod = true
+	for serviceName, endpoints := range monitor.cache.Services() {
+		for endpoint := range endpoints {
+			// Per spec, ready being nil means ready
+			if (endpoint.Conditions.Ready == nil || *endpoint.Conditions.Ready) &&
+				endpoint.TargetRef != nil {
+
+				if endpoint.TargetRef.Kind == "Pod" &&
+					endpoint.TargetRef.Namespace == monitor.Config.Namespace &&
+					endpoint.TargetRef.Name == monitor.Config.PodName {
+
+					serviceNames = append(serviceNames, serviceName)
 					break
 				}
 			}
-
-			if foundPod {
-				break
-			}
 		}
 	}
 
-	endpointIndex := -1
-	for i := range monitor.state.endpoints {
-		if monitor.state.endpoints[i] == endpoint.Name {
-			endpointIndex = i
-			break
-		}
-	}
-
-	hasChangedEndpoints := false
-	if foundPod && endpointIndex == -1 {
-		monitor.state.endpoints = append(monitor.state.endpoints, endpoint.Name)
-		hasChangedEndpoints = true
-	} else if !foundPod && endpointIndex >= 0 {
-		monitor.state.endpoints = append(monitor.state.endpoints[:endpointIndex], monitor.state.endpoints[endpointIndex+1:]...)
-		hasChangedEndpoints = true
-	}
-
-	shouldBeActive := len(monitor.state.endpoints) > 0
-	if shouldBeActive != monitor.state.isActive || hasChangedEndpoints {
-		childLogger := monitor.Config.CreateChildLogger(monitor.Logger)
-
-		if shouldBeActive != monitor.state.isActive {
-			monitor.state.isActive = shouldBeActive
-
-			if shouldBeActive {
-				childLogger.Info("Activated")
-			} else {
-				childLogger.Info("Deactivated")
-			}
+	// Sort service names to have a consistent order
+	slices.SortFunc(serviceNames, func(a, b types.NamespacedName) int {
+		if a.Namespace < b.Namespace {
+			return -1
+		} else if a.Namespace > b.Namespace {
+			return 1
+		} else if a.Name < b.Name {
+			return -1
+		} else if a.Name > b.Name {
+			return 1
 		} else {
-			childLogger.Info("Endpoints changed")
+			return 0
 		}
+	})
 
-		monitor.state.isActive = shouldBeActive
-		monitor.stateChange <- monitor.state
+	if reflect.DeepEqual(serviceNames, monitor.state.serviceNames) {
+		// No change in the list of services, nothing to do
+		return
 	}
+
+	shouldBeActive := len(serviceNames) > 0
+
+	childLogger := monitor.Config.CreateChildLogger(monitor.Logger)
+	if shouldBeActive != monitor.state.isActive {
+		monitor.state.isActive = shouldBeActive
+
+		if shouldBeActive {
+			childLogger.Info("Activated")
+		} else {
+			childLogger.Info("Deactivated")
+		}
+	} else {
+		childLogger.Info("Endpoints changed")
+	}
+
+	monitor.state.isActive = shouldBeActive
+	monitor.state.serviceNames = serviceNames
+	monitor.stateChange <- monitor.state
 }
 
 func (monitor *Monitor) processStateChange(state monitorState) {
@@ -177,46 +184,53 @@ func (monitor *Monitor) Start() error {
 	monitor.stop = make(chan struct{})
 	for monitor.stopRequested = false; !monitor.stopRequested; {
 		watchList := cache.NewFilteredListWatchFromClient(
-			clientset.CoreV1().RESTClient(),
-			"endpoints",
+			clientset.DiscoveryV1().RESTClient(),
+			"endpointslices",
 			monitor.Config.Namespace,
 			func(options *metav1.ListOptions) {
+				labelSelector := monitor.Config.ServiceLabelSelector
+
 				if len(monitor.Config.ServiceName) > 0 {
-					options.FieldSelector = "metadata.name=" + monitor.Config.ServiceName
+					if len(labelSelector) > 0 {
+						labelSelector = labelSelector + ","
+					}
+
+					labelSelector += discovery.LabelServiceName + "=" + monitor.Config.ServiceName
 				}
 
-				options.LabelSelector = monitor.Config.ServiceLabelSelector
+				options.LabelSelector = labelSelector
 			},
 		)
 
-		_, controller := cache.NewInformer(
-			watchList,
-			&v1.Endpoints{},
-			time.Second*0,
-			cache.ResourceEventHandlerFuncs{
-				AddFunc: func(obj interface{}) {
-					endpoint := obj.(*v1.Endpoints)
+		_, controller := cache.NewInformerWithOptions(
+			cache.InformerOptions{
+				ListerWatcher: watchList,
+				ObjectType:    &discovery.EndpointSlice{},
+				ResyncPeriod:  time.Second * 0,
+				Handler: cache.ResourceEventHandlerFuncs{
+					AddFunc: func(obj interface{}) {
+						endpointSlice := obj.(*discovery.EndpointSlice)
 
-					monitor.Logger.Debug("endpoint added",
-						zap.String("endpoint", endpoint.Name))
-					monitor.processEndpoint(endpoint, true)
-				},
-				DeleteFunc: func(obj interface{}) {
-					endpoint := obj.(*v1.Endpoints)
+						monitor.Logger.Debug("endpointslice added",
+							zap.String("endpoint", endpointSlice.Name))
+						monitor.processEndpointSlice(endpointSlice, false)
+					},
+					DeleteFunc: func(obj interface{}) {
+						endpointSlice := obj.(*discovery.EndpointSlice)
 
-					monitor.Logger.Debug("endpoint deleted",
-						zap.String("endpoint", endpoint.Name))
-					monitor.processEndpoint(endpoint, false)
-				},
-				UpdateFunc: func(oldObj, newObj interface{}) {
-					endpoint := newObj.(*v1.Endpoints)
+						monitor.Logger.Debug("endpointslice deleted",
+							zap.String("endpoint", endpointSlice.Name))
+						monitor.processEndpointSlice(endpointSlice, true)
+					},
+					UpdateFunc: func(oldObj, newObj interface{}) {
+						endpointSlice := newObj.(*discovery.EndpointSlice)
 
-					monitor.Logger.Debug("endpoint changed",
-						zap.String("endpoint", endpoint.Name))
-					monitor.processEndpoint(endpoint, true)
+						monitor.Logger.Debug("endpointslice changed",
+							zap.String("endpoint", endpointSlice.Name))
+						monitor.processEndpointSlice(endpointSlice, false)
+					},
 				},
-			},
-		)
+			})
 
 		monitor.Logger.Debug("Starting controller")
 		controller.Run(monitor.stop)

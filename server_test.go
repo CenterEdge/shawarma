@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -33,7 +33,7 @@ func TestEndpoints(t *testing.T) {
 		// Parse output
 		result := w.Result()
 		defer result.Body.Close()
-		data, err := ioutil.ReadAll(result.Body)
+		data, err := io.ReadAll(result.Body)
 
 		// Err validation
 		if err != nil {

@@ -35,7 +35,10 @@ func setStateChange(monitorState *monitorState, logger *zap.Logger) {
 		state.Status = inactiveStatus
 	}
 
-	state.ActiveServices = monitorState.endpoints
+	state.ActiveServices = make([]string, 0, len(monitorState.serviceNames))
+	for _, serviceName := range monitorState.serviceNames {
+		state.ActiveServices = append(state.ActiveServices, serviceName.Name)
+	}
 
 	logger.Debug("State changed.",
 		zap.String("status", state.Status),
@@ -63,7 +66,7 @@ func notifyStateChange(url string, logger *zap.Logger) error {
 
 			defer resp.Body.Close()
 
-			logger.Debug("Notification result", 
+			logger.Debug("Notification result",
 				zap.String("status", resp.Status),
 			)
 

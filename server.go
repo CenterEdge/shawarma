@@ -32,16 +32,16 @@ func _health(w http.ResponseWriter, req *http.Request) {
 }
 
 // Http Server
-func httpServer(port string) {
+func httpServer(port uint16) {
 
 	// Endpoints Handlers
 	http.HandleFunc("/deploymentstate", deploymentState)
 	http.HandleFunc("/_health", _health)
 
-	log.Info(fmt.Sprintf("Starting HTTP Server on port %s", port))
+	log.Infof("Starting HTTP Server on port %d", port)
 
 	// Listener
-	err := http.ListenAndServe(fmt.Sprintf("%s:%s", "localhost", port), nil)
+	err := http.ListenAndServe(fmt.Sprintf("%s:%d", "localhost", port), nil)
 	if err != nil {
 		panic("Error: " + err.Error())
 	}

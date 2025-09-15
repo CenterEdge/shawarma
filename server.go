@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	log "github.com/sirupsen/logrus"
+	"go.uber.org/zap"
 )
 
 // Handlers
@@ -32,13 +32,14 @@ func _health(w http.ResponseWriter, req *http.Request) {
 }
 
 // Http Server
-func httpServer(port uint16) {
+func httpServer(port uint16, logger *zap.Logger) {
 
 	// Endpoints Handlers
 	http.HandleFunc("/deploymentstate", deploymentState)
 	http.HandleFunc("/_health", _health)
 
-	log.Infof("Starting HTTP Server on port %d", port)
+	logger.Info("Starting HTTP Server",
+		zap.Uint16("port", port))
 
 	// Listener
 	err := http.ListenAndServe(fmt.Sprintf("%s:%d", "localhost", port), nil)

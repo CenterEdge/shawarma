@@ -3,6 +3,9 @@ kind: ClusterRole
 metadata:
   name: shawarma
 rules:
+- apiGroups: ["discovery.k8s.io"]
+  resources: ["endpointslices"]
+  verbs: ["get", "watch", "list"]
 - apiGroups: [""]
   resources: ["endpoints"]
   verbs: ["get", "watch", "list"]

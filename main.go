@@ -33,10 +33,10 @@ func main() {
 	defer klog.Flush()
 
 	app := cli.Command{
-		Name:    "Shawarma",
-		Usage:   "Sidecar for monitoring a Kubernetes service and notifying the main application when it is live",
+		Name:      "Shawarma",
+		Usage:     "Sidecar for monitoring a Kubernetes service and notifying the main application when it is live",
 		Copyright: "(c) 2019-2025 CenterEdge Software",
-		Version: version,
+		Version:   version,
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:    "log-level",

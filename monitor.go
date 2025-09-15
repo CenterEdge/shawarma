@@ -131,7 +131,6 @@ func (monitor *Monitor) processEndpointSlice(endpointSlice *discovery.EndpointSl
 		childLogger.Info("Endpoints changed")
 	}
 
-	monitor.state.isActive = shouldBeActive
 	monitor.state.serviceNames = serviceNames
 	monitor.stateChange <- monitor.state
 }
@@ -192,7 +191,7 @@ func (monitor *Monitor) Start() error {
 
 				if len(monitor.Config.ServiceName) > 0 {
 					if len(labelSelector) > 0 {
-						labelSelector = labelSelector + ","
+						labelSelector += ","
 					}
 
 					labelSelector += discovery.LabelServiceName + "=" + monitor.Config.ServiceName

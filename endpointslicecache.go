@@ -26,9 +26,8 @@ type EndpointSliceCache struct {
 	trackerByServiceMap map[types.NamespacedName]*endpointSliceTracker
 }
 
-// endpointSliceTracker keeps track of EndpointSlices as they have been applied
-// by a proxier along with any pending EndpointSlices that have been updated
-// in this cache but not yet applied by a proxier.
+// endpointSliceTracker keeps track of EndpointSlices as they are known for a
+// specific service.
 type endpointSliceTracker struct {
 	slices endpointSliceDataByName // All known EndpointSlices for a service.
 }

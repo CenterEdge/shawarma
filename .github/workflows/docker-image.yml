@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      PUBLISH: ${{ github.event_name == 'push' && (github.ref == github.event.repository.default_branch || github.ref_type == 'tag') }}
+      PUBLISH: ${{ github.event_name == 'push' && (github.ref_name == github.event.repository.default_branch || github.ref_type == 'tag') }}
 
     steps:
       - name: Checkout
